@@ -39,7 +39,10 @@ class TrafficGraph:
         # Creating Display graph
         self.display_Graph = nx.Graph()
         self.init_graph()
+
         self.shortest_path = []
+
+        self.figure = None
 
     def init_graph(self):
         self.display_Graph = nx.Graph((u, v) for u, v in self.i_Graph.edges() if u != v)
@@ -63,7 +66,25 @@ class TrafficGraph:
         self.display_Graph = nx.Graph((self.shortest_path[i], self.shortest_path[i + 1])
                                       for i in range(len(self.shortest_path) - 1))
 
-    def draw_graph(self, node_size=0.5, font_size=2.5, edge_width=0.5, resolution=500, with_labels=True, with_weights=False, weight_attribute='Total_Vol'):
+    def init_graph_figure(self, resolution=100, **kwargs):
+        plt.figure()
+
+        # Set resolution
+        plt.gcf().set_dpi(resolution)
+
+        nx.draw(self.display_Graph, **kwargs)
+        self.figure = plt.gcf()
+
+    def show_figure(self):
+        if self.figure:
+            plt.figure(self.figure.number)
+            plt.show()
+        else:
+            print("Plot has not been initialized. Call init_plot first.")
+
+
+
+    def draw_graph(self, node_size=0.5, font_size=2.5, edge_width=0.5, resolution=100, with_labels=True, with_weights=False, weight_attribute='Total_Vol'):
 
         # Graph Layout
         pos = nx.fruchterman_reingold_layout(self.display_Graph)
@@ -71,31 +92,14 @@ class TrafficGraph:
         nx.draw(self.display_Graph, pos, with_labels=with_labels, node_size=node_size, font_size=font_size, width=edge_width)
 
         # Drawing edges
-        if with_weights:
-            edge_labels = {(u, v): f"{w:.0f}" for (u, v, w) in self.display_Graph.edges(data=weight_attribute)}
-            nx.draw_networkx_edge_labels(self.display_Graph, pos, edge_labels=edge_labels, font_size=4)
+        # if with_weights:
+        #     edge_labels = {(u, v): f"{w:.0f}" for (u, v, w) in self.display_Graph.edges(data=weight_attribute)}
+        #     nx.draw_networkx_edge_labels(self.display_Graph, pos, edge_labels=edge_labels, font_size=4)
 
         plt.gcf().set_dpi(resolution)
         self.plot = plt.gcf()
         plt.show()
 
-
-# def filter_df_by_month(self, month: int):
-#     self.df = self.df[self.df['Date'].dt.month == month]
-
-# def reset_df(self):
-#     self.df = pd.read_csv('Dataset/all_data.csv')
-
-# def filter_loops(self):
-#     self.Graph = self.Graph.subgraph([node for node in self.Graph.nodes() if not self.Graph.has_edge(node, node)])
-
-
-# # Filtering the dataframe by month
-# filtered_df = df  # [df['Date'].dt.month == 10]
-
-# looplessG = G.subgraph([node for node in G.nodes() if not G.has_edge(node, node)])
-
-# subG = G.subgraph([node for node, degree in looplessG.degree if degree >= 2])
 
 def combine_paths(prev, succ, w):
     path = []
@@ -151,9 +155,17 @@ def bidirectional_bfs_shortest_path(G, source, target):
                         return combine_paths(prev, succ, w)
 
 
+# def filter_df_by_month(self, month: int):
+#     self.df = self.df[self.df['Date'].dt.month == month]
+
+# # Filtering the dataframe by month
+# filtered_df = df  # [df['Date'].dt.month == 10]
+
+
 if __name__ == "__main__":
     traffic = TrafficGraph()
     traffic.clear_cache()
     traffic.filter_shortest_path('AlongthePhasiCharoenCanal,northside', 'WangHin')
 
-    traffic.draw_graph()
+    traffic.init_graph_figure(resolution=500, node_size=0.5, font_size=5, width=0.5, with_labels=True)
+    traffic.show_figure()
