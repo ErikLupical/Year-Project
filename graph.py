@@ -41,6 +41,8 @@ class TrafficGraph:
         self.init_graph()
 
         self.shortest_path = []
+        self.percentages = {attr: 0 for attr in self.i_Graph.edges[list(self.i_Graph.edges())[0]]
+                            if attr != 'Total_Vol' and attr != 'Date'}
 
         self.figure = None
 
@@ -69,6 +71,14 @@ class TrafficGraph:
         else:
             self.shortest_path = []
             self.display_Graph = nx.Graph()
+
+    def find_percentages(self):
+        for i in range(len(self.shortest_path)-1):
+            edge = self.i_Graph[self.shortest_path[i]][self.shortest_path[i + 1]]
+            for attr in self.percentages:
+                self.percentages[attr] += float(edge[attr])
+            for attr in self.percentages:
+                self.percentages[attr] = (self.percentages[attr] / edge['Total_Vol']) * 100
 
     def init_graph_figure(self, resolution=100, **kwargs):
         plt.figure()
@@ -160,6 +170,9 @@ if __name__ == "__main__":
     traffic = TrafficGraph()
     traffic.clear_cache()
     traffic.filter_shortest_path('AlongthePhasiCharoenCanal,northside', 'WangHin')
+
+    traffic.find_percentages()
+    print(traffic.percentages)
 
     traffic.init_graph_figure(resolution=500, node_size=0.5, font_size=5, width=0.5, with_labels=True)
     traffic.show_figure()

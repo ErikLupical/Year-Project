@@ -165,6 +165,7 @@ class GraphState(TabState):
         self.tab.update_content()
 
     def run_process(self):
+        # Display shortest_path graph
         self.tab.traffic.filter_shortest_path(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()))
 
         self.tab.traffic.init_graph_figure(with_labels=True)
@@ -172,6 +173,28 @@ class GraphState(TabState):
         self.tab.canvas = FigureCanvasTkAgg(self.tab.traffic.figure, master=self.tab.frame)
         self.tab.canvas.get_tk_widget().grid(row=1, column=0, sticky="nsew")
 
+        # Treeview
+        self.tab.traffic.find_percentages()
+
+        for i in self.tab.tree.get_children():
+            self.tab.tree.delete(i)
+
+        intervals = ['7-9', '9-17', '17-19']
+        percentages_intervals = {interval: {} for interval in intervals}
+
+        # Separate the percentages based on the time interval
+        for attr, value in self.tab.traffic.percentages.items():
+            for interval in intervals:
+                if interval in attr:
+                    # Remove the time interval from the attribute name
+                    vehicle = attr.split('_')[0]
+                    percentages_intervals[interval][vehicle] = value
+
+        # Insert items from the percentages dictionary for each time interval
+        for interval in intervals:
+            self.tab.tree.insert('', 'end', values=(f"Interval {interval}", ""))
+            for vehicle, value in percentages_intervals[interval].items():
+                self.tab.tree.insert('', 'end', values=(vehicle, f"{value:.2f}%"))
         self.tab.update_content()
 
 
