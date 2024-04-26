@@ -1,4 +1,3 @@
-import copy
 import pickle
 import os
 import networkx as nx
@@ -15,6 +14,7 @@ class TrafficGraph:
         # Creating Initial graph
         # Initial positions
         self.i_pos = {}
+        # Graph attributes
         attributes = ['Date',
                       'Car_7-9', 'Van_7-9', 'Bus_7-9', 'Minibus_7-9', 'Truck_7-9', '3Cycle_7-9',
                       'Car_9-17', 'Van_9-17', 'Bus_9-17', 'Minibus_9-17', 'Truck_9-17', '3Cycle_9-17',
@@ -63,8 +63,12 @@ class TrafficGraph:
 
     def filter_shortest_path(self, source, target):
         self.shortest_path = bidirectional_bfs_shortest_path(self.i_Graph, source, target)
-        self.display_Graph = nx.Graph((self.shortest_path[i], self.shortest_path[i + 1])
-                                      for i in range(len(self.shortest_path) - 1))
+        if self.shortest_path:
+            self.display_Graph = nx.Graph((self.shortest_path[i], self.shortest_path[i + 1])
+                                          for i in range(len(self.shortest_path) - 1))
+        else:
+            self.shortest_path = []
+            self.display_Graph = nx.Graph()
 
     def init_graph_figure(self, resolution=100, **kwargs):
         plt.figure()
@@ -76,29 +80,14 @@ class TrafficGraph:
         self.figure = plt.gcf()
 
     def show_figure(self):
+        """
+        sets current figure as the object's figure and shows it
+        """
         if self.figure:
             plt.figure(self.figure.number)
             plt.show()
         else:
             print("Plot has not been initialized. Call init_plot first.")
-
-
-
-    def draw_graph(self, node_size=0.5, font_size=2.5, edge_width=0.5, resolution=100, with_labels=True, with_weights=False, weight_attribute='Total_Vol'):
-
-        # Graph Layout
-        pos = nx.fruchterman_reingold_layout(self.display_Graph)
-
-        nx.draw(self.display_Graph, pos, with_labels=with_labels, node_size=node_size, font_size=font_size, width=edge_width)
-
-        # Drawing edges
-        # if with_weights:
-        #     edge_labels = {(u, v): f"{w:.0f}" for (u, v, w) in self.display_Graph.edges(data=weight_attribute)}
-        #     nx.draw_networkx_edge_labels(self.display_Graph, pos, edge_labels=edge_labels, font_size=4)
-
-        plt.gcf().set_dpi(resolution)
-        self.plot = plt.gcf()
-        plt.show()
 
 
 def combine_paths(prev, succ, w):
@@ -155,11 +144,16 @@ def bidirectional_bfs_shortest_path(G, source, target):
                         return combine_paths(prev, succ, w)
 
 
+# Potential functionality
+
 # def filter_df_by_month(self, month: int):
 #     self.df = self.df[self.df['Date'].dt.month == month]
 
 # # Filtering the dataframe by month
 # filtered_df = df  # [df['Date'].dt.month == 10]
+
+# Graph Layout
+# pos = nx.fruchterman_reingold_layout(self.display_Graph)
 
 
 if __name__ == "__main__":
