@@ -2,6 +2,7 @@ import pickle
 import os
 import networkx as nx
 import matplotlib.pyplot as plt
+import seaborn as sns
 import pandas as pd
 
 
@@ -36,15 +37,15 @@ class TrafficGraph:
             with open('Dataset/cached_graph.pkl', 'wb') as f:
                 pickle.dump(self.i_Graph, f)
 
-        # Creating Display graph
+        # Creating Display figure
         self.display_Graph = nx.Graph()
         self.init_graph()
 
         self.shortest_path = []
-        self.percentages = {attr: 0 for attr in self.i_Graph.edges[list(self.i_Graph.edges())[0]]
-                            if attr != 'Total_Vol' and attr != 'Date'}
+        self.percentages = {}
+        self.stats = {}
 
-        self.figure = None
+        self.figure, self.ax = plt.subplots()
 
     def init_graph(self):
         self.display_Graph = nx.Graph((u, v) for u, v in self.i_Graph.edges() if u != v)
@@ -73,20 +74,91 @@ class TrafficGraph:
             self.display_Graph = nx.Graph()
 
     def find_percentages(self):
-        for i in range(len(self.shortest_path)-1):
-            edge = self.i_Graph[self.shortest_path[i]][self.shortest_path[i + 1]]
+        self.percentages = {attr: 0 for attr in self.i_Graph.edges[list(self.i_Graph.edges())[0]]
+                            if attr != 'Total_Vol' and attr != 'Date'}
+
+        if self.shortest_path:
+            total_volume = 0
+            for i in range(len(self.shortest_path) - 1):
+                edge = self.i_Graph[self.shortest_path[i]][self.shortest_path[i + 1]]
+                total_volume += edge['Total_Vol']
+
+            for i in range(len(self.shortest_path)-1):
+                edge = self.i_Graph[self.shortest_path[i]][self.shortest_path[i + 1]]
+                for attr in self.percentages:
+                    self.percentages[attr] += float(edge[attr])
+
             for attr in self.percentages:
-                self.percentages[attr] += float(edge[attr])
-            for attr in self.percentages:
-                self.percentages[attr] = (self.percentages[attr] / edge['Total_Vol']) * 100
+                self.percentages[attr] = (self.percentages[attr] / total_volume) * 100
+
+    def find_stats(self, series1=None, series2=None):
+        self.stats = {'Centrality': {}, 'Variability': {}, 'Comparison': {}}
+
+        if series1:
+            self.stats['Centrality'][series1] = {
+                'mean': self.df[series1].mean(),
+                'median': self.df[series1].median(),
+                'mode': self.df[series1].mode().tolist()
+            }
+            self.stats['Variability'][series1] = {
+                'range': self.df[series1].max() - self.df[series1].min(),
+                'variance': self.df[series1].var(),
+                'standard deviation': self.df[series1].std(),
+                'IQR': self.df[series1].quantile(0.75) - self.df[series1].quantile(0.25)
+            }
+        if series2:
+            self.stats['Centrality'][series2] = {
+                'mean': self.df[series2].mean(),
+                'median': self.df[series2].median(),
+                'mode': self.df[series2].mode().tolist()
+            }
+            self.stats['Variability'][series2] = {
+                'range': self.df[series2].max() - self.df[series2].min(),
+                'variance': self.df[series2].var(),
+                'standard deviation': self.df[series2].std(),
+                'IQR': self.df[series2].quantile(0.75) - self.df[series2].quantile(0.25)
+            }
+        if series1 and series2:
+            self.stats['Comparison'] = {
+                'covariance': self.df[[series1, series2]].cov().iloc[0, 1],
+                'correlation coefficient': self.df[[series1, series2]].corr().iloc[0, 1]
+            }
 
     def init_graph_figure(self, resolution=100, **kwargs):
-        plt.figure()
-
-        # Set resolution
+        self.ax.clear()
         plt.gcf().set_dpi(resolution)
 
-        nx.draw(self.display_Graph, **kwargs)
+        nx.draw(self.display_Graph, ax=self.ax, **kwargs)
+        # self.figure.canvas.draw()
+        self.figure = plt.gcf()
+
+    def init_time_series_figure(self, series1, series2=None, resolution=100):
+        plt.figure()
+        plt.gcf().set_dpi(resolution)
+
+        plt.plot(self.df['Date'], self.df[series1], label=series1)
+        if series2:
+            plt.plot(self.df['Date'], self.df[series2], label=series2)
+        plt.xlabel('Date')
+        plt.ylabel('Volume')
+        plt.legend()
+        self.figure = plt.gcf()
+
+    def init_distribution_figure(self, series1=None, series2=None, resolution=100, **kwargs):
+        plt.figure()
+        plt.gcf().set_dpi(resolution)
+
+        if series1:
+            plt.hist(self.df[series1], label=series1, density=True, **kwargs)
+
+        if series2:
+            plt.hist(self.df[series2], label=series2, density=True, **kwargs)
+
+        plt.legend(prop={'size': 16}, title='Attributes')
+        plt.xlabel('Volume')
+        plt.ylabel('Density')
+        plt.xlim(left=0)
+
         self.figure = plt.gcf()
 
     def show_figure(self):
@@ -120,7 +192,7 @@ def bidirectional_bfs_shortest_path(G, source, target):
         raise nx.NodeNotFound(msg)
 
     elif source == target:
-        return [source]
+        return [source, target]
 
     Gprev = G.adj
     Gsucc = G.adj
@@ -176,3 +248,11 @@ if __name__ == "__main__":
 
     traffic.init_graph_figure(resolution=500, node_size=0.5, font_size=5, width=0.5, with_labels=True)
     traffic.show_figure()
+
+    traffic.init_time_series_figure('Total_Vol', 'Car_9-17')
+    traffic.show_figure()
+
+    traffic.init_distribution_figure('Total_Vol', 'Car_9-17')
+    traffic.show_figure()
+    traffic.find_stats('Total_Vol', 'Car_9-17')
+    print(traffic.stats)
