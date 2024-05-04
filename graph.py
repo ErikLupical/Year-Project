@@ -2,7 +2,6 @@ import pickle
 import os
 import networkx as nx
 import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
 
 
@@ -92,37 +91,34 @@ class TrafficGraph:
                 self.percentages[attr] = (self.percentages[attr] / total_volume) * 100
 
     def find_stats(self, series1=None, series2=None):
-        self.stats = {'Centrality': {}, 'Variability': {}, 'Comparison': {}}
+        stats_dict = {}
 
-        if series1:
-            self.stats['Centrality'][series1] = {
-                'mean': self.df[series1].mean(),
-                'median': self.df[series1].median(),
-                'mode': self.df[series1].mode().tolist()
-            }
-            self.stats['Variability'][series1] = {
-                'range': self.df[series1].max() - self.df[series1].min(),
-                'variance': self.df[series1].var(),
-                'standard deviation': self.df[series1].std(),
-                'IQR': self.df[series1].quantile(0.75) - self.df[series1].quantile(0.25)
-            }
-        if series2:
-            self.stats['Centrality'][series2] = {
-                'mean': self.df[series2].mean(),
-                'median': self.df[series2].median(),
-                'mode': self.df[series2].mode().tolist()
-            }
-            self.stats['Variability'][series2] = {
-                'range': self.df[series2].max() - self.df[series2].min(),
-                'variance': self.df[series2].var(),
-                'standard deviation': self.df[series2].std(),
-                'IQR': self.df[series2].quantile(0.75) - self.df[series2].quantile(0.25)
-            }
+        series_list = [series1, series2]
+        for series in series_list:
+            if series:
+                stats_dict[series] = {
+                    'Centrality': {
+                        'mean': self.df[series1].mean(),
+                        'median': self.df[series1].median(),
+                        'mode': self.df[series1].mode().tolist()
+                    },
+                    'Variability': {
+                        'range': self.df[series1].max() - self.df[series1].min(),
+                        'variance': self.df[series1].var(),
+                        'standard deviation': self.df[series1].std(),
+                        'IQR': self.df[series1].quantile(0.75) - self.df[series1].quantile(0.25)
+                    }
+                }
         if series1 and series2:
-            self.stats['Comparison'] = {
+            stats_dict['Comparison'] = {
                 'covariance': self.df[[series1, series2]].cov().iloc[0, 1],
                 'correlation coefficient': self.df[[series1, series2]].corr().iloc[0, 1]
             }
+
+        self.stats = stats_dict
+
+    def find_proportions(self):
+        pass
 
     def init_graph_figure(self, resolution=100, **kwargs):
         self.ax.clear()
@@ -132,13 +128,15 @@ class TrafficGraph:
         # self.figure.canvas.draw()
         self.figure = plt.gcf()
 
-    def init_time_series_figure(self, series1, series2=None, resolution=100):
+    def init_time_series_figure(self, series1=None, series2=None, resolution=100):
         plt.figure()
         plt.gcf().set_dpi(resolution)
 
-        plt.plot(self.df['Date'], self.df[series1], label=series1)
+        if series1:
+            plt.plot(self.df['Date'], self.df[series1], label=series1)
         if series2:
             plt.plot(self.df['Date'], self.df[series2], label=series2)
+
         plt.xlabel('Date')
         plt.ylabel('Volume')
         plt.legend()
