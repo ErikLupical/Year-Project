@@ -31,6 +31,9 @@ class UI(Tk):
         close_button = Button(button_frame, text="Close Tab", bg='pink', command=self.close_current_tab)
         close_button.pack(side="left", fill="x", expand=True)
 
+        exit_button = Button(button_frame, text="Quit", bg='pink', command=self.destroy)
+        exit_button.pack(side="bottom", fill="x", expand=True)
+
     def create_new_tab(self):
         tab = Tab(self.notebook)  # ttk.Frame(self.notebook)
 
