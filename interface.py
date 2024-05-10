@@ -15,6 +15,7 @@ class UI(Tk):
     def __init__(self):
         super().__init__()
         self.title("Hekate")
+        # self.attributes('-fullscreen', True)
 
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(expand=True, fill="both")
@@ -25,14 +26,14 @@ class UI(Tk):
         button_frame = ttk.Frame(self)
         button_frame.pack(side="bottom", fill="x")
 
-        new_button = Button(button_frame, text="New Tab", command=self.create_new_tab)
-        new_button.pack(side="right", fill="x", expand=True)
-
         close_button = Button(button_frame, text="Close Tab", bg='pink', command=self.close_current_tab)
         close_button.pack(side="left", fill="x", expand=True)
 
         exit_button = Button(button_frame, text="Quit", bg='pink', command=self.destroy)
-        exit_button.pack(side="bottom", fill="x", expand=True)
+        exit_button.pack(side="left", fill="x", expand=True)
+
+        new_button = Button(button_frame, text="New Tab", command=self.create_new_tab)
+        new_button.pack(side="left", fill="x", expand=True)
 
     def create_new_tab(self):
         tab = Tab(self.notebook)  # ttk.Frame(self.notebook)
@@ -53,16 +54,16 @@ class UI(Tk):
 
 class Tab:
     def __init__(self, notebook):
+        self.traffic = TrafficGraph()
+        self.state = NullState(self)
+
         # New Frame
         self.frame = Frame(notebook)
 
-        self.traffic = TrafficGraph()
-        self.state = None
-
         # Dropdown Menu
-        self.option = StringVar()
-        self.option.set('Choose type of figure')
-        self.drop_option = OptionMenu(self.frame, self.option,
+        option = StringVar()
+        option.set('Choose type of figure')
+        self.drop_option = OptionMenu(self.frame, option,
                                       'Graph',
                                       'Pie',
                                       'Distribution',
@@ -70,70 +71,108 @@ class Tab:
                                       command=self.switch_state)
 
         # Canvas
-        self.canvas_frame = Frame(self.frame)
         self.figure = self.traffic.figure
+        self.canvas = FigureCanvasTkAgg(self.figure, master=self.frame)
 
-        self.canvas = FigureCanvasTkAgg(self.figure, master=self.canvas_frame)
-        self.canvas.get_tk_widget().grid(row=0, column=0, sticky="ew")
-
-        toolbar = NavigationToolbar2Tk(self.canvas, self.canvas_frame, pack_toolbar=False)
-        toolbar.grid(row=1, column=0, sticky="nsew")
-
-        self.canvas_frame.rowconfigure(0, weight=1)
-        self.canvas_frame.rowconfigure(1, weight=1)
-        self.canvas_frame.columnconfigure(0, weight=1)
+        # Toolbar
+        toolbar = NavigationToolbar2Tk(self.canvas, self.frame, pack_toolbar=False)
 
         # Description frame
-        self.description_frame = LabelFrame(self.frame, text="Description")
-        self.description = Text(self.description_frame, width=80, height=10)
+        description_frame = LabelFrame(self.frame, text="Description")
+        self.description = Text(description_frame, width=80, height=10)
         self.description.pack()
+
+        # Stats frame
+        stats_frame = Frame(self.frame)
 
         # Combo boxes
         self.combo1_var = StringVar()
         self.combo2_var = StringVar()
 
-        self.combo_frame = Frame(self.frame)
-        self.combobox1 = ttk.Combobox(self.combo_frame, width=50, textvariable=self.combo1_var, values=[])
+        self.combobox1 = ttk.Combobox(stats_frame, width=50, textvariable=self.combo1_var, values=[])
         self.combobox1.grid(row=0, column=0, padx=20, pady=10)
 
-        arrow = Label(self.combo_frame, text='↹', anchor='center')
+        arrow = Label(stats_frame, text='↹', anchor='center', font=("Segoe UI", 12))
         arrow.grid(row=0, column=1)
 
-        self.combobox2 = ttk.Combobox(self.combo_frame, width=50, textvariable=self.combo2_var, values=[])
+        self.combobox2 = ttk.Combobox(stats_frame, width=50, textvariable=self.combo2_var, values=[])
         self.combobox2.grid(row=0, column=3, padx=20, pady=10)
 
-        run_button = Button(self.combo_frame, text='Run', command=self.run_process, padx=10)
+        run_button = Button(stats_frame, text='Run', command=self.run_process, padx=10)
         run_button.grid(row=0, column=4, padx=20, pady=10)
 
-        self.combo_frame.rowconfigure(0, weight=1)
-        self.combo_frame.columnconfigure(0, weight=1)
-        self.combo_frame.columnconfigure(1, weight=1)
-        self.combo_frame.columnconfigure(2, weight=1)
-        self.combo_frame.columnconfigure(3, weight=1)
-
         # Treeview
-        self.tree = ttk.Treeview(self.frame, columns=('Attribute', 'Value'), show='headings')
+        # TODO add scrollbar
+        self.tree = ttk.Treeview(stats_frame, columns=('Attribute', 'Value'), show='headings')
         self.tree.heading('Attribute', text='Attribute')
         self.tree.heading('Value', text='Value')
+        self.tree.grid(row=1, column=0, columnspan=5, sticky="nsew", padx=20)
 
-        self.init_place_components()
+        # Story buttons
+        story_frame = Frame(stats_frame)
 
-    def init_place_components(self):
+        reset_button = Button(story_frame, text='Reset Tab', command=self.state.set_content)
+        reset_button.pack(side='left', fill='x', expand=True)
+
+        story_button = Button(story_frame, text='Storytelling')
+        story_button.pack(side='left', fill='x', expand=True)
+
+        story_frame.grid(row=2, column=0, columnspan=5, sticky="nsew", padx=20, pady='10')
+
+        stats_frame.rowconfigure(0, weight=1)
+
+        # Configure stat frame components
+        stats_frame.rowconfigure(0, weight=0)
+        stats_frame.rowconfigure(1, weight=1)
+        stats_frame.rowconfigure(2, weight=0)
+
+        stats_frame.columnconfigure(0, weight=1)
+        stats_frame.columnconfigure(1, weight=1)
+        stats_frame.columnconfigure(2, weight=1)
+        stats_frame.columnconfigure(3, weight=1)
+
+        # Place components
         self.drop_option.grid(row=0, column=0, sticky="nsew")
-        self.canvas_frame.grid(row=1, column=0, sticky="nsew")
-        self.description_frame.grid(row=2, column=0, sticky="nsew")
-        self.combo_frame.grid(row=0, column=1, sticky="nsew")
-        self.tree.grid(row=1, column=1, rowspan=2, sticky="nsew")
+        self.canvas.get_tk_widget().grid(row=1, column=0, sticky="nsew")
+        toolbar.grid(row=2, column=0, sticky="nsew")
+        description_frame.grid(row=3, column=0, sticky="nsew")
+
+        stats_frame.grid(row=0, column=1, rowspan=4, sticky="nsew")
 
         self.frame.columnconfigure(0, weight=1)
         self.frame.columnconfigure(1, weight=1)
+
         self.frame.rowconfigure(0, weight=1)
         self.frame.rowconfigure(1, weight=1)
         self.frame.rowconfigure(2, weight=1)
+        self.frame.rowconfigure(3, weight=1)
 
-    def update_content(self):
-
+    def update_figure(self, figure):
+        self.canvas.get_tk_widget().grid_forget()
+        self.canvas = FigureCanvasTkAgg(figure, master=self.frame)
         self.canvas.draw()
+        self.canvas.get_tk_widget().grid(row=1, column=0, sticky="nsew")
+
+        toolbar = NavigationToolbar2Tk(self.canvas, self.frame, pack_toolbar=False)
+        toolbar.grid(row=2, column=0, sticky="nsew")
+
+    def update_description(self, text):
+        self.description.delete('1.0', END)
+        self.description.insert('1.0', text)
+
+    def update_combobox(self, list1, list2):
+        self.combobox1.config(values=list1)
+        self.combobox2.config(values=list2)
+
+    def update_treeview(self, dictionary):
+        for key, value in dictionary.items():
+            if isinstance(value, dict):
+                self.tree.insert('', 'end', values=(key, ''))
+                self.update_treeview(value)
+            elif isinstance(value, list):
+                self.tree.insert('', 'end', values=(key, f'{str(value)}'))
+            else:
+                self.tree.insert('', 'end', values=(key, f'{value:.3f}'))
 
     def switch_state(self, option):
         states = {
@@ -157,6 +196,10 @@ class Tab:
 class TabState(ABC):
     def __init__(self, tab):
         self.tab = tab
+        self.attributes = ['Car_7-9', 'Van_7-9', 'Bus_7-9', 'Minibus_7-9', 'Truck_7-9', '3Cycle_7-9',
+                           'Car_9-17', 'Van_9-17', 'Bus_9-17', 'Minibus_9-17', 'Truck_9-17', '3Cycle_9-17',
+                           'Car_17-19', 'Van_17-19', 'Bus_17-19', 'Minibus_17-19', 'Truck_17-19', '3Cycle_17-19',
+                           'Total_Vol']
 
     @abstractmethod
     def set_content(self):
@@ -166,46 +209,40 @@ class TabState(ABC):
     def run_process(self):
         raise NotImplemented
 
-    def set_treeview(self, dictionary):
-        for key, value in dictionary.items():
-            if isinstance(value, dict):
-                self.tab.tree.insert('', 'end', values=(key, ''))
-                self.set_treeview(value)
-            elif isinstance(value, list):
-                self.tab.tree.insert('', 'end', values=(key, f'{str(value)}'))
-            else:
-                self.tab.tree.insert('', 'end', values=(key, f'{value:.3f}'))
+
+class NullState(TabState):
+    def set_content(self):
+        pass
+
+    def run_process(self):
+        pass
 
 
 class GraphState(TabState):
     def set_content(self):
-        for i in self.tab.tree.get_children():
-            self.tab.tree.delete(i)
-        self.tab.canvas.get_tk_widget().grid_forget()
-
+        # Figure
         self.tab.traffic.init_graph()
-        self.tab.traffic.init_graph_figure(node_size=0.5, font_size=5, width=0.5, with_labels=True)
+        self.tab.traffic.init_graph_figure(node_size=0.5, font_size=10, width=0.5, with_labels=True)
+        self.tab.update_figure(self.tab.traffic.figure)
 
-        self.tab.canvas = FigureCanvasTkAgg(self.tab.traffic.figure, master=self.tab.canvas_frame)
-        self.tab.canvas.draw()
-        self.tab.canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
+        # Description
+        self.tab.update_description('Use toolbar to navigate the graph')
 
         # Combo boxes
-        crossroads_unique = self.tab.traffic.df['Crossroads'].unique()
-        road_unique = self.tab.traffic.df['Road'].unique()
-        self.tab.combobox1.config(values=list(np.sort(list(set(np.concatenate((crossroads_unique, road_unique)))))))
-        self.tab.combobox2.config(values=list(np.sort(list(set(np.concatenate((crossroads_unique, road_unique)))))))
+        unique_values = np.union1d(self.tab.traffic.df['Crossroads'].unique(), self.tab.traffic.df['Road'].unique())
+        unique_list = unique_values.tolist()
+        self.tab.update_combobox(unique_list, unique_list)
 
-        self.tab.update_content()
+        # Treeview
+        for i in self.tab.tree.get_children():
+            self.tab.tree.delete(i)
 
     def run_process(self):
         # Display shortest_path graph
         self.tab.traffic.filter_shortest_path(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()))
-
         self.tab.traffic.init_graph_figure(with_labels=True)
-        self.tab.canvas.get_tk_widget().grid_forget()
-        self.tab.canvas = FigureCanvasTkAgg(self.tab.traffic.figure, master=self.tab.canvas_frame)
-        self.tab.canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
+
+        self.tab.update_figure(self.tab.traffic.figure)
 
         # Treeview
         for i in self.tab.tree.get_children():
@@ -215,7 +252,6 @@ class GraphState(TabState):
 
         intervals = ['7-9', '9-17', '17-19']
         percentages_intervals = {interval: {} for interval in intervals}
-
         # Separate the percentages based on the time interval
         for attr, value in self.tab.traffic.percentages.items():
             for interval in intervals:
@@ -223,18 +259,12 @@ class GraphState(TabState):
                     vehicle = attr.split('_')[0]
                     percentages_intervals[interval][vehicle] = value
 
-        # for interval in intervals:
-        #     self.tab.tree.insert('', 'end', values=(f"Interval {interval}", ""))
-        #     for vehicle, value in percentages_intervals[interval].items():
-        #         self.tab.tree.insert('', 'end', values=(vehicle, f"{value:.3f}%"))
-
-        self.set_treeview(percentages_intervals)
-
-        self.tab.update_content()
+        self.tab.update_treeview(percentages_intervals)
 
 
 class PieState(TabState):
     def set_content(self):
+        # TODO
         pass
 
     def run_process(self):
@@ -243,82 +273,64 @@ class PieState(TabState):
 
 class DistributionState(TabState):
     def set_content(self):
-        for i in self.tab.tree.get_children():
-            self.tab.tree.delete(i)
-        self.tab.canvas.get_tk_widget().grid_forget()
-
+        # Figure
         self.tab.traffic.init_distribution_figure()
+        self.tab.update_figure(self.tab.traffic.figure)
 
-        self.tab.canvas = FigureCanvasTkAgg(self.tab.traffic.figure, master=self.tab.canvas_frame)
-        self.tab.canvas.draw()
-        self.tab.canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
+        # Description
+        self.tab.update_description('')
 
         # Combo boxes
-        self.tab.combobox1.config(values=['Car_7-9', 'Van_7-9', 'Bus_7-9', 'Minibus_7-9', 'Truck_7-9', '3Cycle_7-9',
-                                          'Car_9-17', 'Van_9-17', 'Bus_9-17', 'Minibus_9-17', 'Truck_9-17', '3Cycle_9-17',
-                                          'Car_17-19', 'Van_17-19', 'Bus_17-19', 'Minibus_17-19', 'Truck_17-19', '3Cycle_17-19', 'Total_Vol'],)
-        self.tab.combobox2.config(values=['Car_7-9', 'Van_7-9', 'Bus_7-9', 'Minibus_7-9', 'Truck_7-9', '3Cycle_7-9',
-                                          'Car_9-17', 'Van_9-17', 'Bus_9-17', 'Minibus_9-17', 'Truck_9-17', '3Cycle_9-17',
-                                          'Car_17-19', 'Van_17-19', 'Bus_17-19', 'Minibus_17-19', 'Truck_17-19', '3Cycle_17-19', 'Total_Vol'])
+        self.tab.update_combobox(self.attributes, self.attributes)
 
-        self.tab.update_content()
+        # Treeview
+        for i in self.tab.tree.get_children():
+            self.tab.tree.delete(i)
 
     def run_process(self):
+        # Figure
         if str(self.tab.combo1_var.get()) or str(self.tab.combo2_var.get()):
-            self.tab.traffic.init_distribution_figure(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()), bins=50, alpha=0.5,)
-            self.tab.canvas.get_tk_widget().grid_forget()
-            self.tab.canvas = FigureCanvasTkAgg(self.tab.traffic.figure, master=self.tab.canvas_frame)
-            self.tab.canvas.draw()
-            self.tab.canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
+            self.tab.traffic.init_distribution_figure(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()),
+                                                      bins=50, alpha=0.5,)
+
+            self.tab.update_figure(self.tab.traffic.figure)
 
         # Treeview
         for i in self.tab.tree.get_children():
             self.tab.tree.delete(i)
 
         self.tab.traffic.find_stats(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()))
-        self.set_treeview(self.tab.traffic.stats)
-
-        self.tab.update_content()
+        self.tab.update_treeview(self.tab.traffic.stats)
 
 
 class TimeSeriesState(TabState):
     def set_content(self):
-        for i in self.tab.tree.get_children():
-            self.tab.tree.delete(i)
-        self.tab.canvas.get_tk_widget().grid_forget()
-
+        # Figure
         self.tab.traffic.init_time_series_figure()
+        self.tab.update_figure(self.tab.traffic.figure)
 
-        self.tab.canvas = FigureCanvasTkAgg(self.tab.traffic.figure, master=self.tab.canvas_frame)
-        self.tab.canvas.draw()
-        self.tab.canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
+        # Description
+        self.tab.update_description('')
 
         # Combo boxes
-        self.tab.combobox1.config(values=['Car_7-9', 'Van_7-9', 'Bus_7-9', 'Minibus_7-9', 'Truck_7-9', '3Cycle_7-9',
-                                          'Car_9-17', 'Van_9-17', 'Bus_9-17', 'Minibus_9-17', 'Truck_9-17', '3Cycle_9-17',
-                                          'Car_17-19', 'Van_17-19', 'Bus_17-19', 'Minibus_17-19', 'Truck_17-19', '3Cycle_17-19', 'Total_Vol'],)
-        self.tab.combobox2.config(values=['Car_7-9', 'Van_7-9', 'Bus_7-9', 'Minibus_7-9', 'Truck_7-9', '3Cycle_7-9',
-                                          'Car_9-17', 'Van_9-17', 'Bus_9-17', 'Minibus_9-17', 'Truck_9-17', '3Cycle_9-17',
-                                          'Car_17-19', 'Van_17-19', 'Bus_17-19', 'Minibus_17-19', 'Truck_17-19', '3Cycle_17-19', 'Total_Vol'])
+        self.tab.update_combobox(self.attributes, self.attributes)
 
-        self.tab.update_content()
+        # Treeview
+        for i in self.tab.tree.get_children():
+            self.tab.tree.delete(i)
 
     def run_process(self):
         if str(self.tab.combo1_var.get()) or str(self.tab.combo2_var.get()):
             self.tab.traffic.init_time_series_figure(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()))
-            self.tab.canvas.get_tk_widget().grid_forget()
-            self.tab.canvas = FigureCanvasTkAgg(self.tab.traffic.figure, master=self.tab.canvas_frame)
-            self.tab.canvas.draw()
-            self.tab.canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
+
+            self.tab.update_figure(self.tab.traffic.figure)
 
         # Treeview
         for i in self.tab.tree.get_children():
             self.tab.tree.delete(i)
 
         self.tab.traffic.find_stats(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()))
-        self.set_treeview(self.tab.traffic.stats)
-
-        self.tab.update_content()
+        self.tab.update_treeview(self.tab.traffic.stats)
 
 
 if __name__ == "__main__":
