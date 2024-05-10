@@ -10,6 +10,8 @@ class TrafficGraph:
         self.df = pd.read_csv('Dataset/all_data.csv')
         # Convert Date to datetime format
         self.df['Date'] = pd.to_datetime(self.df['Date'])
+        self.df['Day_type'] = self.df['Date'].dt.day_name()
+        self.day_gb = self.df.groupby('Day_type')
 
         # Creating Initial graph
         # Initial positions
@@ -41,7 +43,6 @@ class TrafficGraph:
         self.init_graph()
 
         self.shortest_path = []
-        self.percentages = {}
         self.stats = {}
 
         self.figure, self.ax = plt.subplots()
@@ -73,7 +74,7 @@ class TrafficGraph:
             self.display_Graph = nx.Graph()
 
     def find_percentages(self):
-        self.percentages = {attr: 0 for attr in self.i_Graph.edges[list(self.i_Graph.edges())[0]]
+        self.stats = {attr: 0 for attr in self.i_Graph.edges[list(self.i_Graph.edges())[0]]
                             if attr != 'Total_Vol' and attr != 'Date'}
 
         if self.shortest_path:
@@ -84,13 +85,13 @@ class TrafficGraph:
 
             for i in range(len(self.shortest_path)-1):
                 edge = self.i_Graph[self.shortest_path[i]][self.shortest_path[i + 1]]
-                for attr in self.percentages:
-                    self.percentages[attr] += float(edge[attr])
+                for attr in self.stats:
+                    self.stats[attr] += float(edge[attr])
 
-            for attr in self.percentages:
-                self.percentages[attr] = (self.percentages[attr] / total_volume) * 100
+            for attr in self.stats:
+                self.stats[attr] = (self.stats[attr] / total_volume) * 100
 
-    def find_stats(self, series1=None, series2=None):
+    def find_stats(self, series1=None, series2=None, time_series=False):
         stats_dict = {}
 
         series_list = [series1, series2]
@@ -103,12 +104,37 @@ class TrafficGraph:
                         'mode': self.df[series1].mode().tolist()
                     },
                     'Variability': {
+                        'min': self.df[series].min(),
+                        'max': self.df[series].max(),
                         'range': self.df[series1].max() - self.df[series1].min(),
                         'variance': self.df[series1].var(),
                         'standard deviation': self.df[series1].std(),
                         'IQR': self.df[series1].quantile(0.75) - self.df[series1].quantile(0.25)
+                    },
+                    'Variability (Day of Week)': {
+                        'Monday': None,
+                        'Tuesday': None,
+                        'Wednesday': None,
+                        'Thursday': None,
+                        'Friday': None,
+                        'Saturday': None,
+                        'Sunday': None
                     }
                 }
+                if time_series:
+                    for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']:
+                        day_data = self.df[self.df['Day_type'] == day][series]
+                        stats_dict[series]['Variability (Day of Week)'][day] ={
+                            'mean': day_data.mean(),
+                            'median': day_data.median(),
+                            'min': day_data.min(),
+                            'max': day_data.max(),
+                            'range': day_data.max() - day_data.min(),
+                            'variance': day_data.var(),
+                            'standard deviation': day_data.std(),
+                            'IQR': day_data.quantile(0.75) - day_data.quantile(0.25)
+                        }
+
         if series1 and series2:
             stats_dict['Comparison'] = {
                 'covariance': self.df[[series1, series2]].cov().iloc[0, 1],
@@ -116,9 +142,6 @@ class TrafficGraph:
             }
 
         self.stats = stats_dict
-
-    def find_proportions(self):
-        pass
 
     def init_graph_figure(self, resolution=100, **kwargs):
         self.ax.clear()
@@ -239,18 +262,24 @@ def bidirectional_bfs_shortest_path(G, source, target):
 if __name__ == "__main__":
     traffic = TrafficGraph()
     traffic.clear_cache()
+
+    # print(traffic.df.head())
+    filtered_df = traffic.df[traffic.df['Day_type'] == 'Sunday']
+    print(filtered_df['Total_Vol'].head())
+
     traffic.filter_shortest_path('AlongthePhasiCharoenCanal,northside', 'WangHin')
 
     traffic.find_percentages()
-    print(traffic.percentages)
+    print(traffic.stats)
 
-    traffic.init_graph_figure(resolution=500, node_size=0.5, font_size=5, width=0.5, with_labels=True)
-    traffic.show_figure()
+    # traffic.init_graph_figure(resolution=500, node_size=0.5, font_size=5, width=0.5, with_labels=True)
+    # traffic.show_figure()
 
     traffic.init_time_series_figure('Total_Vol', 'Car_9-17')
     traffic.show_figure()
 
-    traffic.init_distribution_figure('Total_Vol', 'Car_9-17')
-    traffic.show_figure()
-    traffic.find_stats('Total_Vol', 'Car_9-17')
+    # traffic.init_distribution_figure('Total_Vol', 'Car_9-17')
+    # traffic.show_figure()
+
+    traffic.find_stats('Total_Vol', 'Car_9-17', time_series=True)
     print(traffic.stats)

@@ -65,7 +65,6 @@ class Tab:
         option.set('Choose type of figure')
         self.drop_option = OptionMenu(self.frame, option,
                                       'Graph',
-                                      'Pie',
                                       'Distribution',
                                       'TimeSeries',
                                       command=self.switch_state)
@@ -147,9 +146,12 @@ class Tab:
         self.frame.rowconfigure(2, weight=1)
         self.frame.rowconfigure(3, weight=1)
 
-    def update_figure(self, figure):
+    # TODO write reset handler
+    # TODO write story handler
+
+    def update_figure(self):
         self.canvas.get_tk_widget().grid_forget()
-        self.canvas = FigureCanvasTkAgg(figure, master=self.frame)
+        self.canvas = FigureCanvasTkAgg(self.traffic.figure, master=self.frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().grid(row=1, column=0, sticky="nsew")
 
@@ -164,20 +166,20 @@ class Tab:
         self.combobox1.config(values=list1)
         self.combobox2.config(values=list2)
 
-    def update_treeview(self, dictionary):
+    def update_treeview(self, dictionary, parent=''):
         for key, value in dictionary.items():
             if isinstance(value, dict):
-                self.tree.insert('', 'end', values=(key, ''))
-                self.update_treeview(value)
-            elif isinstance(value, list):
-                self.tree.insert('', 'end', values=(key, f'{str(value)}'))
-            else:
-                self.tree.insert('', 'end', values=(key, f'{value:.3f}'))
+                node = self.tree.insert(parent, 'end', text=key, values=(key, ''))
+                self.update_treeview(value, node)
+            elif isinstance(value, list):  # List handling, converted to string for display.
+                self.tree.insert(parent, 'end', values=(key, ', '.join(map(str, value))))
+            else:  # Regular items with scalar values, formatting handled accordingly.
+                formatted_value = f'{value:.3f}' if isinstance(value, float) else str(value)
+                self.tree.insert(parent, 'end', values=(key, formatted_value))
 
     def switch_state(self, option):
         states = {
             'Graph': GraphState,
-            'Pie': PieState,
             'Distribution': DistributionState,
             'TimeSeries': TimeSeriesState
         }
@@ -218,12 +220,13 @@ class NullState(TabState):
         pass
 
 
+# TODO disable dropdown box after choosing
 class GraphState(TabState):
     def set_content(self):
         # Figure
         self.tab.traffic.init_graph()
         self.tab.traffic.init_graph_figure(node_size=0.5, font_size=10, width=0.5, with_labels=True)
-        self.tab.update_figure(self.tab.traffic.figure)
+        self.tab.update_figure()
 
         # Description
         self.tab.update_description('Use toolbar to navigate the graph')
@@ -242,7 +245,7 @@ class GraphState(TabState):
         self.tab.traffic.filter_shortest_path(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()))
         self.tab.traffic.init_graph_figure(with_labels=True)
 
-        self.tab.update_figure(self.tab.traffic.figure)
+        self.tab.update_figure()
 
         # Treeview
         for i in self.tab.tree.get_children():
@@ -253,7 +256,7 @@ class GraphState(TabState):
         intervals = ['7-9', '9-17', '17-19']
         percentages_intervals = {interval: {} for interval in intervals}
         # Separate the percentages based on the time interval
-        for attr, value in self.tab.traffic.percentages.items():
+        for attr, value in self.tab.traffic.stats.items():
             for interval in intervals:
                 if interval in attr:
                     vehicle = attr.split('_')[0]
@@ -262,20 +265,11 @@ class GraphState(TabState):
         self.tab.update_treeview(percentages_intervals)
 
 
-class PieState(TabState):
-    def set_content(self):
-        # TODO
-        pass
-
-    def run_process(self):
-        raise NotImplemented
-
-
 class DistributionState(TabState):
     def set_content(self):
         # Figure
         self.tab.traffic.init_distribution_figure()
-        self.tab.update_figure(self.tab.traffic.figure)
+        self.tab.update_figure()
 
         # Description
         self.tab.update_description('')
@@ -293,7 +287,7 @@ class DistributionState(TabState):
             self.tab.traffic.init_distribution_figure(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()),
                                                       bins=50, alpha=0.5,)
 
-            self.tab.update_figure(self.tab.traffic.figure)
+            self.tab.update_figure()
 
         # Treeview
         for i in self.tab.tree.get_children():
@@ -307,7 +301,7 @@ class TimeSeriesState(TabState):
     def set_content(self):
         # Figure
         self.tab.traffic.init_time_series_figure()
-        self.tab.update_figure(self.tab.traffic.figure)
+        self.tab.update_figure()
 
         # Description
         self.tab.update_description('')
@@ -323,15 +317,15 @@ class TimeSeriesState(TabState):
         if str(self.tab.combo1_var.get()) or str(self.tab.combo2_var.get()):
             self.tab.traffic.init_time_series_figure(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()))
 
-            self.tab.update_figure(self.tab.traffic.figure)
+            self.tab.update_figure()
 
         # Treeview
         for i in self.tab.tree.get_children():
             self.tab.tree.delete(i)
 
-        self.tab.traffic.find_stats(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()))
+        self.tab.traffic.find_stats(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()), time_series=True)
         self.tab.update_treeview(self.tab.traffic.stats)
-
+        print(self.tab.traffic.stats)
 
 if __name__ == "__main__":
     UI = UI()
