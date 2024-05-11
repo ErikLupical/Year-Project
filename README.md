@@ -43,6 +43,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ## References
-- Project proposal
+- [Project proposal](https://docs.google.com/document/d/1xrs812Q61Y8sp-I6mjK8kuL8ROEmxg7FoxWt-dztvpQ/edit?usp=sharing)
 - Development Plan
 - UML diagrams
