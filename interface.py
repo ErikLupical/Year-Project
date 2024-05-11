@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 
 from tkinter import *
 from tkinter import ttk
+from tkinter import messagebox
 
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 import numpy as np
@@ -110,10 +110,10 @@ class Tab:
         # Story buttons
         story_frame = Frame(stats_frame)
 
-        reset_button = Button(story_frame, text='Reset Tab', command=self.state.set_content)
+        reset_button = Button(story_frame, text='Reset Tab', command=self.reset_tab)
         reset_button.pack(side='left', fill='x', expand=True)
 
-        story_button = Button(story_frame, text='Storytelling')
+        story_button = Button(story_frame, text='Storytelling', command=self.tell_story)
         story_button.pack(side='left', fill='x', expand=True)
 
         story_frame.grid(row=2, column=0, columnspan=5, sticky="nsew", padx=20, pady='10')
@@ -146,9 +146,6 @@ class Tab:
         self.frame.rowconfigure(2, weight=1)
         self.frame.rowconfigure(3, weight=1)
 
-    # TODO write reset handler
-    # TODO write story handler
-
     def update_figure(self):
         self.canvas.get_tk_widget().grid_forget()
         self.canvas = FigureCanvasTkAgg(self.traffic.figure, master=self.frame)
@@ -177,6 +174,11 @@ class Tab:
                 formatted_value = f'{value:.3f}' if isinstance(value, float) else str(value)
                 self.tree.insert(parent, 'end', values=(key, formatted_value))
 
+    # TODO write reset handler
+    def reset_tab(self):
+        pass
+
+    # TODO add loading screen
     def switch_state(self, option):
         states = {
             'Graph': GraphState,
@@ -186,10 +188,13 @@ class Tab:
         state_class = states[option]
         self.state = state_class(self)
         self.state.set_content()
+        self.drop_option.config(state='disabled')
 
     def run_process(self):
-        if self.state:
-            self.state.run_process()
+        self.state.run_process()
+
+    def tell_story(self):
+        self.state.tell_story()
 
     def get_frame(self):
         return self.frame
@@ -211,6 +216,10 @@ class TabState(ABC):
     def run_process(self):
         raise NotImplemented
 
+    @abstractmethod
+    def tell_story(self):
+        raise NotImplemented
+
 
 class NullState(TabState):
     def set_content(self):
@@ -219,8 +228,10 @@ class NullState(TabState):
     def run_process(self):
         pass
 
+    def tell_story(self):
+        self.tab.update_description('Please choose a visualization type.')
 
-# TODO disable dropdown box after choosing
+
 class GraphState(TabState):
     def set_content(self):
         # Figure
@@ -264,6 +275,19 @@ class GraphState(TabState):
 
         self.tab.update_treeview(percentages_intervals)
 
+    def tell_story(self):
+        self.tab.combo1_var.set('LatPhrao')
+        self.tab.combo2_var.set('PhongPhet')
+        self.run_process()
+        self.tab.update_description('The graph shows a path from the crossroad with the largest volume to the crossroad'
+                                    ' with the 3rd largest volume. The treeview shows the percentage of different types'
+                                    ' of vehicles seperated into different time periods. The majority of traffic'
+                                    ' consists of cars, followed by a significantly smaller percentage of vans and'
+                                    ' buses. The volume of minibuses, trucks, and bicycles is minimal.'
+                                    ' This distribution remains relatively consistent during different times of the day'
+                                    ' (7-9 am, 9-17 pm, 17-19 pm). This suggests that cars are the primary mode of'
+                                    ' transportation in this area, regardless of the time of day.')
+
 
 class DistributionState(TabState):
     def set_content(self):
@@ -296,6 +320,20 @@ class DistributionState(TabState):
         self.tab.traffic.find_stats(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()))
         self.tab.update_treeview(self.tab.traffic.stats)
 
+    def tell_story(self):
+        self.tab.combo1_var.set('Car_9-17')
+        self.tab.combo2_var.set('Total_Vol')
+        self.run_process()
+        self.tab.update_description('Both the distribution of cars between 9-17 and the total volume are positively '
+                                    'skewed, with most data points concentrated towards the lower end of volume. This '
+                                    'suggests that there are a few times when the volume is very high, but most of the '
+                                    'time, the volume is relatively low. A high standard deviation or IQR indicates a '
+                                    'wide spread of data around the mean. In this case, both distributions '
+                                    'have a relatively high standard deviation, indicating a high variability in the '
+                                    'volume of cars. The mean, median, and mode are measures of centrality. In this '
+                                    'case, the mean and median are relatively close for both distributions, suggesting '
+                                    'that distributions are not heavily skewed.')
+
 
 class TimeSeriesState(TabState):
     def set_content(self):
@@ -326,6 +364,17 @@ class TimeSeriesState(TabState):
         self.tab.traffic.find_stats(str(self.tab.combo1_var.get()), str(self.tab.combo2_var.get()), time_series=True)
         self.tab.update_treeview(self.tab.traffic.stats)
         print(self.tab.traffic.stats)
+
+    def tell_story(self):
+        self.tab.combo1_var.set('Car_9-17')
+        self.tab.combo2_var.set('Total_Vol')
+        self.run_process()
+        self.tab.update_description('The volume for the most used vehicle within the period 9-17 has the highest value'
+                                    'on Tuesday within a small range and the lowest value on Sunday with a large range.'
+                                    'The most used vehicle is likely being used for purposes that align with a typical '
+                                    'work week, such as commuting or business operations. This is suggested by the high'
+                                    ' usage on Tuesday (a common workday) and low usage on Sunday (commonly a day off).')
+
 
 if __name__ == "__main__":
     UI = UI()

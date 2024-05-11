@@ -19,3 +19,4 @@ which is the interface.py file in the terminal.
 - Two combo boxes located on the top right allow you to select two attributes to be graphed or compared.
 - To quit the program, use the "Quit" button located at the bottom of the interface.
 
+![img.png](img.png)
