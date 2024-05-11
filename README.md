@@ -44,5 +44,5 @@ SOFTWARE.
 
 ## References
 - [Project proposal](https://docs.google.com/document/d/1xrs812Q61Y8sp-I6mjK8kuL8ROEmxg7FoxWt-dztvpQ/edit?usp=sharing)
-- Development Plan
-- UML diagrams
+- [Development Plan](https://github.com/ErikLupical/Year-Project/wiki/Development-Plan)
+- [UML Diagrams](https://github.com/ErikLupical/Year-Project/wiki/UML-Diagrams)
